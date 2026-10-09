@@ -1,0 +1,4 @@
+{
+  "rewrites": [{ "source": "/s/:u", "destination": "/api/s?u=:u" }],
+  "functions": { "api/og.js": { "includeFiles": "fonts/**", "maxDuration": 15 } }
+}
