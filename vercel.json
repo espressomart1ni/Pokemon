@@ -1,4 +1,9 @@
+
 {
-  "rewrites": [{ "source": "/s/:u", "destination": "/api/s?u=:u" }],
-  "functions": { "api/og.js": { "includeFiles": "api/_bricolage-*.woff", "maxDuration": 15 } }
+  "rewrites": [
+    {
+      "source": "/s/:u",
+      "destination": "/api/s?u=:u"
+    }
+  ]
 }
