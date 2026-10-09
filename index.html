@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's your Pokémon?</title>
+<meta property="og:title" content="What's your Pokémon?">
+<meta property="og:description" content="Type your X username. Find your most scandalous tweet, your most viral tweet and your Pokémon.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F3F0FF;--card:#fff;--ink:#1B1340;--mute:#6b6590;--line:#d9d2f5;--hot:#FF4F6D;--sun:#FFD23F;--mint:#12A594}
+@media (prefers-color-scheme:dark){:root{--bg:#140F2E;--card:#1F1847;--ink:#F3F0FF;--mute:#a59fd0;--line:#352c6b;--mint:#38d9c4}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:clamp(2.4rem,9vw,4rem);line-height:.95;margin:0 0 10px;font-weight:800;letter-spacing:-.03em}
+h1 span{background:var(--sun);color:#1B1340;padding:0 .15em;border-radius:.15em;display:inline-block;transform:rotate(-2deg)}
+.by{font-size:.9rem;color:var(--mute);margin:0 0 12px}
+.by a{font-weight:800;text-decoration:none;background:var(--sun);color:#1B1340;padding:2px 10px;border-radius:999px}
+.lead{color:var(--mute);margin:0 0 22px;max-width:52ch}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+input{font:inherit;font-size:1.1rem;border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:999px;padding:12px 20px;flex:1;min-width:200px}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+button,a.btn{font:inherit;font-weight:600;border:2px solid var(--ink);background:var(--card);color:var(--ink);padding:11px 20px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block}
+button.go{background:var(--hot);color:#fff;border-color:var(--hot)}
+button:disabled{opacity:.6;cursor:wait}
+#msg{margin-top:12px;min-height:1.4em;font-size:.92rem;color:var(--mint)}
+#msg.err{color:var(--hot)}
+#out{display:none;margin-top:26px}
+#card{width:100%;border-radius:16px;border:2px solid var(--ink);display:block}
+.actions{margin:14px 0 24px}
+.bars{display:grid;gap:8px;margin:0 0 22px}
+.bar{display:grid;grid-template-columns:78px 1fr 34px;gap:10px;align-items:center;font-size:.88rem}
+.track{height:12px;background:var(--line);border-radius:99px;overflow:hidden}
+.fill{height:100%;border-radius:99px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:620px){.pair{grid-template-columns:1fr}}
+.tw{background:var(--card);border:2px solid var(--ink);border-radius:18px;padding:16px}
+.tw h3{margin:0 0 8px;font-size:1.05rem}
+.tw blockquote{margin:0 0 10px;padding-left:12px;border-left:4px solid var(--hot);overflow-wrap:anywhere}
+.tw.v blockquote{border-color:var(--mint)}
+.why{font-size:.82rem;color:var(--mute)}
+.why a{color:var(--ink)}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem}
+.stat b{display:block;font-size:1.2rem}
+footer{margin-top:40px;font-size:.8rem;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+<h1>What's your <span>Pokémon?</span></h1>
+<p class="by">Built by <a href="https://x.com/espressomart1n" target="_blank" rel="noopener">@espressomart1n</a></p>
+<p class="lead">Type your X username. It reads your public posts and finds your most scandalous tweet, your most viral tweet and the Pokémon you are.</p>
+<form class="row" id="f">
+<input id="u" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@yourusername" aria-label="Your X username">
+<button class="go" id="go" type="submit">Find my Pokémon</button>
+</form>
+<div id="msg" role="status" aria-live="polite"></div>
+<section id="out">
+<canvas id="card" width="1200" height="675" aria-label="Your shareable card"></canvas>
+<div class="row actions"><button id="save">Save image</button><button id="post" type="button">Post on X</button><button id="copy">Copy text</button></div>
+<div class="bars" id="bars"></div>
+<div class="pair">
+<div class="tw"><h3>Most scandalous</h3><blockquote id="sc"></blockquote><div class="why" id="scwhy"></div></div>
+<div class="tw v"><h3>Most viral</h3><blockquote id="vi"></blockquote><div class="why" id="viwhy"></div></div>
+</div>
+<div class="stats" id="stats"></div>
+</section>
+<footer>What's your Pokémon? is built and owned by <a href="https://x.com/espressomart1n" target="_blank" rel="noopener">@espressomart1n</a>. It reads public posts through the unofficial FxTwitter service and is not affiliated with X, Nintendo or The Pokémon Company. Pokémon artwork belongs to its owners.</footer>
+</main>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var LEX={
+chaos:["lol","lmao","lmfao","unhinged","chaos","chaotic","wtf","bruh","omg","help","screaming","insane","crying","dead","deadass","nooo","bro","crazy","wild","vibes","cooked",
+"pagal","pagalpan","bakchodi","bawal","hungama","dhamaal","arre","oye","bhai","yaar","scene","ded","\u092a\u093e\u0917\u0932"],
+warmth:["love","loved","thank","thanks","grateful","proud","friends","friend","hug","congrats","congratulations","blessed","miss","family","support","happy","beautiful","welcome","appreciate","cheers","sweet","kind","together","celebrate","gm",
+"pyaar","dil","shukriya","dhanyavaad","mubarak","badhai","dost","dosto","khush","dua","aashirwad","parivaar","maa","papa","\u092a\u094d\u092f\u093e\u0930","\u0936\u0941\u0915\u094d\u0930\u093f\u092f\u093e","\u0926\u094b\u0938\u094d\u0924","\u092e\u0941\u092c\u093e\u0930\u0915"],
+wit:["actually","apparently","sure","imagine","pov","not me","plot twist","technically","ok but","respectfully","sarcasm","anyway","honestly","basically","somehow","funny","joke","irony","unironically","as if","fun fact",
+"waise","matlab","mazak","sahi hai","kya baat","bilkul","shayad","kaash","jugaad","ironic"],
+hustle:["build","built","building","launch","launched","ship","shipped","grind","startup","money","career","goal","goals","hire","hiring","founder","scale","revenue","internship","portfolio","project","business","brand","client","growth","income","job","opportunity","promotion","hustle",
+"mehnat","kaam","paisa","paise","naukri","sapna","sapne","safalta","kamai","tayyari","shuru","\u092e\u0947\u0939\u0928\u0924","\u092a\u0948\u0938\u093e"],
+brain:["data","analysis","model","insight","because","research","trend","pattern","study","learn","learned","theory","metric","dashboard","why","think","idea","problem","solution","thread","understand","explain","science","reason","result","test",
+"kyun","kyu","kyunki","kaise","samajh","dimaag","soch","sochna","vichar","wajah","jawab","sawal","seekha","padhai","padhna","\u0915\u094d\u092f\u094b\u0902"],
+drama:["never","always","worst","hate","literally","everyone","nobody","ratio","cancel","cancelled","toxic","scam","overrated","unpopular","hot take","fight me","hear me out","controversial","i said what i said","exposed","delusional","disgusting","unbelievable","ridiculous","embarrassing",
+"bakwaas","bekar","bekaar","nafrat","jhooth","dhokha","galat","sharam","ghatiya","faltu","hamesha","kabhi nahi","koi nahi","\u092c\u0915\u0935\u093e\u0938","\u0927\u094b\u0916\u093e"]
+};
+var NAMES={chaos:"Chaos",warmth:"Warmth",wit:"Wit",hustle:"Hustle",brain:"Brains",drama:"Drama"};
+var COL={chaos:"#FF9F1C",warmth:"#FF4F6D",wit:"#7B5CFF",hustle:"#12A594",brain:"#2D9CDB",drama:"#C2185B"};
+var TC={Normal:"#C6C6A7",Fire:"#FF8A5B",Water:"#6CB6FF",Electric:"#FFD23F",Grass:"#7BD88F",Ice:"#9FE7F0",Fighting:"#E4685F",Poison:"#C07AD8",Ground:"#E0C068",Flying:"#A9B8FF",Psychic:"#FF7EB0",Bug:"#B5D13A",Rock:"#CDB86B",Ghost:"#9B7BFF",Dragon:"#8D7BFF",Dark:"#9A8478",Steel:"#B8C4D8",Fairy:"#FFAAD4"};
+var TE={Normal:"\uD83D\uDC3E",Fire:"\uD83D\uDD25",Water:"\uD83D\uDCA7",Electric:"\u26A1",Grass:"\uD83C\uDF3F",Ice:"\u2744\uFE0F",Fighting:"\uD83E\uDD4A",Poison:"\u2620\uFE0F",Ground:"\u26F0\uFE0F",Flying:"\uD83D\uDD4A\uFE0F",Psychic:"\uD83D\uDD2E",Bug:"\uD83D\uDC1B",Rock:"\uD83E\uDEA8",Ghost:"\uD83D\uDC7B",Dragon:"\uD83D\uDC09",Dark:"\uD83C\uDF19",Steel:"\u2699\uFE0F",Fairy:"\u2728"};
+var TK={ch:"chaos",wa:"warmth",wi:"wit",hu:"hustle",br:"brain",dr:"drama"};
+var RAW=[
+["Bulbasaur",1,"Grass/Poison","wa2 br2","Steady, kind and quietly growing into something big."],
+["Charmander",4,"Fire","hu3 wa1","Small flame, big plans. You are just getting started."],
+["Squirtle",7,"Water","wi2 wa2 ch1","Cool, loyal and always with a squad."],
+["Charizard",6,"Fire/Flying","hu3 dr2 ch1","Loud ambition and big flames. You post like someone already building the thing."],
+["Butterfree",12,"Bug/Flying","wa3 wi1","Soft, graceful and a favourite to see in the timeline."],
+["Pikachu",25,"Electric","wa3 ch2 wi1","Bright, friendly and a little too energetic. People follow you for the good vibes and stay for the sparks."],
+["Raichu",26,"Electric","hu2 ch2 wa1","Pikachu with a plan and a bigger voltage."],
+["Clefairy",35,"Fairy","wa3 wi1 dr1","Sweet, dreamy and a bit of a moon child."],
+["Ninetales",38,"Fire","wi3 dr1 br1","Elegant, a little mysterious and hard to impress."],
+["Jigglypuff",39,"Normal/Fairy","dr3 ch2 wa1","Main character energy. If nobody is listening, you will simply post again."],
+["Zubat",41,"Poison/Flying","ch3 wi1","Up at all hours and full of random noise."],
+["Vileplume",45,"Grass/Poison","wa2 dr2","Looks sweet, comes with opinions."],
+["Meowth",52,"Normal","hu3 wi2","Street smart with an eye on the money. You spot an angle before anyone else is awake."],
+["Persian",53,"Normal","wi2 hu2 dr1","Polished, picky and always on brand."],
+["Psyduck",54,"Water","ch3 wi2 wa1","Gloriously confused and somehow everyone relates. Chaos is your brand."],
+["Growlithe",58,"Fire","wa3 hu1","Loyal to the core and first to show up."],
+["Arcanine",59,"Fire","hu3 wa2","Fast, loyal and built to chase the goal."],
+["Poliwhirl",61,"Water","wi2 ch2 wa1","Goes with the flow and keeps everyone entertained."],
+["Abra",63,"Psychic","br2 wi1","Says little, thinks a lot, then disappears."],
+["Alakazam",65,"Psychic","br3 wi3","Big brain, dry humor. You explain things and make the room laugh while doing it."],
+["Machamp",68,"Fighting","hu3 br1","Four arms, one schedule, zero days off."],
+["Gastly",92,"Ghost/Poison","wi2 ch2 dr1","Turns up in the replies when you least expect it."],
+["Gengar",94,"Ghost/Poison","wi3 ch2 dr2","Sharp, sly and always one joke ahead. Your replies are why people check the comments."],
+["Onix",95,"Rock/Ground","hu1 dr1","Solid, unshakeable and slow to react."],
+["Hypno",97,"Psychic","br2 wi2 dr1","Slow-burn takes that make people stop scrolling."],
+["Voltorb",100,"Electric","ch3 dr1","Looks harmless and goes off without warning."],
+["Exeggutor",103,"Grass/Psychic","ch2 br2 wi1","Big brain energy in several directions at once."],
+["Cubone",104,"Ground","wa3 dr1","Quiet, sentimental and carrying more than you show."],
+["Lickitung",108,"Normal","ch2 wi1 wa1","Extra, curious and into everything."],
+["Koffing",109,"Poison","ch2 dr2","A small cloud of hot takes."],
+["Chansey",113,"Normal","wa3","Looks after everyone, probably too much."],
+["Kangaskhan",115,"Normal","wa3 hu2","Protective, capable and carrying a whole crew."],
+["Mr. Mime",122,"Psychic/Fairy","wi3 br1 ch1","Plays the character perfectly and never breaks."],
+["Scyther",123,"Bug/Flying","hu2 dr2 wi1","Sharp, fast and out of patience for nonsense."],
+["Jynx",124,"Ice/Psychic","dr2 wi2 ch1","Loud, stylish and always the centre of the room."],
+["Magikarp",129,"Water","ch2 hu2","Splashing around now, a dragon in the making."],
+["Gyarados",130,"Water/Flying","dr3 hu2 ch1","The glow-up nobody saw coming, and it is fierce."],
+["Lapras",131,"Water/Ice","wa3 br1","Gentle, a good listener and a safe ride home."],
+["Porygon",137,"Normal","br3 ch1","Built for data, a bit glitchy and deeply logical."],
+["Eevee",133,"Normal","wa2 br1 wi1 hu1","Adaptable and full of potential. You can evolve in any direction, and your feed shows it."],
+["Snorlax",143,"Normal","wa1","Calm, low-key and unbothered. You post rarely, and the internet waits."],
+["Dragonite",149,"Dragon/Flying","wa3 hu2","Big heart, big wings and delivers on time."],
+["Mewtwo",150,"Psychic","br3 dr2 hu2","Intense, analytical and built different. You do not post often, but when you do it lands like a verdict."],
+["Mew",151,"Psychic","ch2 wi2 wa2 hu1","Curious, playful and impossible to pin down."],
+["Togepi",175,"Fairy","wa3 ch1","Pure good vibes in a tiny package."],
+["Ampharos",181,"Electric","wa2 br2 hu1","A guiding light people look up to."],
+["Marill",183,"Water/Fairy","wa3 ch1","Bouncy, friendly and hard to dislike."],
+["Sudowoodo",185,"Rock","ch2 wi2 dr1","Pretending to be a tree and not fooling anyone."],
+["Espeon",196,"Psychic","br3 wi1 wa1","Calm, perceptive and a step ahead of the group chat."],
+["Umbreon",197,"Dark","wi2 br2 dr1","Night owl, cool head, sharp one-liners."],
+["Slowking",199,"Water/Psychic","br3 wi2","Takes a while, then says the smartest thing in the room."],
+["Wobbuffet",202,"Psychic","wi2 dr1 wa1","Never starts it, never backs down either."],
+["Scizor",212,"Bug/Steel","hu3 dr1","Precise, polished and focused on the win."],
+["Tyranitar",248,"Rock/Dark","dr3 hu2","Big presence and bigger opinions."],
+["Lugia",249,"Psychic/Flying","br2 wa2 wi1","Calm, rare and rarely seen online."],
+["Celebi",251,"Psychic/Grass","wa2 wi2 br1","A gentle time traveller who brings good news."],
+["Blaziken",257,"Fire/Fighting","hu3 dr1 ch1","Always training, always kicking higher."],
+["Mudkip",258,"Water","ch2 wa2 wi1","Chill, cute and a meme waiting to happen."],
+["Gardevoir",282,"Psychic/Fairy","wa3 br1 wi1","Feels everything for everyone and protects the people it loves."],
+["Sableye",302,"Dark/Ghost","wi2 ch2 dr1","Shiny taste and chaotic mischief."],
+["Mawile",303,"Steel/Fairy","wi2 dr2 wa1","Sweet face, jaws in the back."],
+["Aggron",306,"Steel/Rock","hu2 dr1 wa1","Protective, tough and fiercely loyal to its patch."],
+["Torkoal",324,"Fire","br1 wa1 dr1","Slow, steady and lets the steam out in puffs."],
+["Milotic",350,"Water","wa2 wi2 hu1","Graceful, admired and calming to be around."],
+["Absol",359,"Dark","dr3 br1","The one who warns everyone and gets blamed for it."],
+["Salamence",373,"Dragon/Flying","ch2 hu2 dr2","Dream big, fly fast, land loudly."],
+["Metagross",376,"Steel/Psychic","br3 hu2","Four brains and calculates everything."],
+["Rayquaza",384,"Dragon/Flying","dr2 hu2 br1","Rules the sky from a very high post."],
+["Infernape",392,"Fire/Fighting","hu2 ch3","Fast, loud and always up to something."],
+["Piplup",393,"Water","hu2 wa1 dr1","Proud, small and absolutely sure of itself."],
+["Luxray",405,"Electric","br2 hu2 dr1","Sees through everything and acts quickly."],
+["Garchomp",445,"Dragon/Ground","hu3 ch1 dr1","Pure speed and ambition, no time for small talk."],
+["Lucario",448,"Fighting/Steel","hu2 br2 wa2","Disciplined, loyal and quietly powerful. You read the energy and then act."],
+["Weavile",461,"Dark/Ice","wi3 dr1 hu1","Sharp, sly and always a plot twist."],
+["Togekiss",468,"Fairy/Flying","wa3 wi1 br1","Spreads good luck wherever it lands."],
+["Gallade",475,"Psychic/Fighting","br2 wa2 hu1","Thoughtful, chivalrous and quick to defend friends."],
+["Rotom",479,"Electric/Ghost","ch3 wi2","Possesses every device and every group chat."],
+["Excadrill",530,"Ground/Steel","hu3 ch1","Digs in and drills straight to the result."],
+["Zorua",570,"Dark","wi2 ch2","Master of disguise and a little prankster."],
+["Zoroark",571,"Dark","wi3 dr2 ch1","Plays tricks, and the mask is the brand."],
+["Chandelure",609,"Ghost/Fire","dr2 wi2 br1","Elegant, haunting and very good at slow burns."],
+["Haxorus",612,"Dragon","hu2 dr2","Direct and fierce, cuts through the noise."],
+["Fennekin",653,"Fire","wa2 wi1 hu1","Warm, curious and still finding its flame."],
+["Greninja",658,"Water/Dark","wi3 hu2 dr1","Fast and precise, strikes with perfect timing."],
+["Pancham",674,"Fighting","dr2 ch2 hu1","Tough-guy act, soft inside."],
+["Sylveon",700,"Fairy","wa3 wi1 br1","Ribbons, kindness and a tender touch."],
+["Hawlucha",701,"Fighting/Flying","ch2 hu2 dr1","Big entrance, bigger pose."],
+["Goodra",706,"Dragon","wa3 ch1 wi1","Soft, slippery and just wants a hug."],
+["Rowlet",722,"Grass/Flying","wa2 br1 wi1","Sleepy, thoughtful and a little daydreamy."],
+["Decidueye",724,"Grass/Ghost","br2 hu2 wi1","Silent, aim-true and does not miss."],
+["Lycanroc",745,"Rock","hu2 wa2 dr1","Loyal, fiery and full of pack energy."],
+["Toxapex",748,"Poison/Water","dr2 br1 wa1","Prickly defences, caring underneath."],
+["Bewear",760,"Normal/Fighting","wa2 ch2","Gives bear hugs that might be a lot."],
+["Mimikyu",778,"Ghost/Fairy","wa2 wi2 dr1","Wears the costume so people like you, secretly sweet."],
+["Cinderace",815,"Fire","hu3 ch1","Always warming up for the next big match."],
+["Corviknight",823,"Flying/Steel","hu2 br2","Efficient, reliable and always on schedule."],
+["Wooloo",831,"Normal","wa2 ch2","Fluffy chaos that rolls in unannounced."],
+["Morpeko",877,"Electric/Dark","dr2 ch2 wi1","Hangry and hilarious in equal measure."],
+["Dragapult",887,"Dragon/Ghost","hu2 wi2 ch1","Fast, spooky and always launching something."],
+["Sprigatito",906,"Grass","wa2 wi2","Cute, sassy and knows it."]
+];
+var POKE=RAW.map(function(r){var t=r[2].split("/"),w={};r[3].split(" ").forEach(function(x){w[TK[x.slice(0,2)]]=+x.slice(2)});
+return{n:r[0],dex:r[1],t:t,w:w,d:r[4],e:TE[t[0]],c:TC[t[0]]}});
+var SNORLAX=POKE.filter(function(p){return p.n==="Snorlax"})[0];
+var ART="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
+function count(t,words){var low=t.toLowerCase(),n=0;words.forEach(function(w){var re=new RegExp("(^|[^a-z])"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"([^a-z]|$)","g");var m=low.match(re);if(m)n+=m.length});return n}
+function caps(t){return (t.match(/\b[A-Z]{3,}\b/g)||[]).length}
+function scandal(t){
+var d=count(t,LEX.drama),hotP=count(t,["unpopular opinion","hot take","fight me","hear me out","i said what i said","controversial"]);
+var ex=(t.match(/!/g)||[]).length,cp=caps(t),neg=count(t,["hate","worst","scam","toxic","delusional","trash","awful","stupid"]);
+var s=d*3+hotP*5+Math.min(ex,3)+cp*2+neg*2;
+var r=[];if(hotP)r.push("opens with a hot-take flag");if(d)r.push(d+" drama word"+(d>1?"s":""));if(cp)r.push("shouting in caps");if(neg)r.push("strong negative language");if(!r.length)r.push("mild, but still the spiciest you wrote");
+return{s:s,why:r.join(", ")}}
+function viral(x){
+if(x.likes!==null)return{s:x.likes+2*x.rt,why:x.likes+" likes and "+x.rt+" retweets (actual)",real:true};
+var t=x.text,len=t.length,s=0,r=[];
+if(len<=110){s+=3;r.push("short and punchy")}else if(len<=200){s+=1}
+if(/\?/.test(t)){s+=2;r.push("asks a question")}
+if(/^(why|how|nobody|everyone|unpopular|hot take|pov|the)/i.test(t)){s+=2;r.push("strong hook")}
+if(/\d/.test(t)){s+=1;r.push("uses a number")}
+var sc=scandal(t).s;if(sc){s+=Math.min(sc,6)/2;r.push("a little controversy helps reach")}
+var lw=count(t,LEX.warmth);if(lw){s+=1;r.push("relatable warmth")}
+return{s:s,why:(r.join(", ")||"clear and simple")+" (predicted)",real:false}}
+var BASE={chaos:.10,warmth:.12,wit:.06,hustle:.14,brain:.16,drama:.08};
+function analyze(list,seed){
+var n=list.length,tot={chaos:0,warmth:0,wit:0,hustle:0,brain:0,drama:0},words=0,emo=0,tags=0,q=0,cp=0,hits=0;
+list.forEach(function(x){var t=x.text;
+for(var k in LEX){var c=count(t,LEX[k]);tot[k]+=c;hits+=c}
+tot.chaos+=Math.min((t.match(/!/g)||[]).length,3)*.3+caps(t)*.5;
+tot.wit+=Math.min((t.match(/\?/g)||[]).length,2)*.25;
+tot.warmth+=(t.match(/[\u2764\uD83D\uDC96\uD83D\uDC95\uD83E\uDD79\uD83E\uDEF6\uD83D\uDE0A]/g)||[]).length*.5+(t.match(/<3/g)||[]).length*.5;
+words+=t.split(/\s+/).length;emo+=(t.match(/\p{Extended_Pictographic}/gu)||[]).length;tags+=(t.match(/#\w+/g)||[]).length;q+=/\?/.test(t)?1:0;cp+=caps(t)});
+var score={},mx=0,sum=0,k;
+for(k in tot){score[k]=(tot[k]+1)/(n*BASE[k]+1);if(score[k]>mx)mx=score[k];sum+=score[k]}
+var pct={};for(k in score)pct[k]=Math.round(score[k]/mx*100);
+var keys=Object.keys(NAMES),mean=sum/keys.length;
+var v=keys.map(function(k){return score[k]-mean}),vn=Math.sqrt(v.reduce(function(a,b){return a+b*b},0));
+var cands=[];
+POKE.forEach(function(p){if(p===SNORLAX)return;
+var w=keys.map(function(k){return p.w[k]||0}),wm=w.reduce(function(a,b){return a+b},0)/w.length;
+w=w.map(function(x){return x-wm});var wn=Math.sqrt(w.reduce(function(a,b){return a+b*b},0));
+if(!wn||!vn)return;var d=0;for(var i=0;i<w.length;i++)d+=w[i]*v[i];cands.push({p:p,d:d/(wn*vn)})});
+cands.sort(function(a,b){return b.d-a.d});
+var best=null;
+if(cands.length){var near=cands.filter(function(c){return c.d>=cands[0].d-.03}).slice(0,6),h=0,sd=String(seed||"");
+for(var q=0;q<sd.length;q++)h=(h*31+sd.charCodeAt(q))>>>0;best=near[h%near.length].p}
+if(!best||hits<Math.max(3,n*.03))best=SNORLAX;
+var sc2=list.map(function(x){return{x:x,r:scandal(x.text)}}).sort(function(a,b){return b.r.s-a.r.s})[0];
+var vi=list.map(function(x){return{x:x,r:viral(x)}}).sort(function(a,b){return b.r.s-a.r.s})[0];
+return{n:n,pct:pct,poke:best,sc:sc2,vi:vi,words:Math.round(words/n),emo:emo,tags:tags,q:Math.round(q/n*100),cp:cp}}
+function cleanText(t){return String(t||"").replace(/https?:\/\/\S+/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/^(@\w+\s*)+/,"").replace(/\s+/g," ").trim()}
+function findKey(o,k,d){d=d||0;if(!o||typeof o!=="object"||d>6)return null;if(typeof o[k]==="string"&&o[k])return o[k];for(var i in o){var r=findKey(o[i],k,d+1);if(r)return r}return null}
+function findVal(o,k,d){d=d||0;if(!o||typeof o!=="object"||d>6)return undefined;if(o[k]!==undefined&&o[k]!==null&&typeof o[k]!=="object")return o[k];for(var i in o){var r=findVal(o[i],k,d+1);if(r!==undefined)return r}return undefined}
+function mapResults(j,handle,withReplies){
+var out=[],h=handle.toLowerCase(),av=null,nm=null,rp=0,res=(j&&j.results)||[],cnt={},typed=false;
+res.forEach(function(s){if(!s||s.type!=="status"||s.reposted_by||/^RT @/.test(s.text||""))return;
+var a=((s.author||{}).screen_name||"").toLowerCase();if(!a)return;cnt[a]=(cnt[a]||0)+1;if(a===h)typed=true});
+var exp=h;if(!typed){var best=0;for(var k in cnt)if(cnt[k]>best){best=cnt[k];exp=k}}
+res.forEach(function(s){
+if(!s||s.type!=="status")return;
+if(s.reposted_by||/^RT @/.test(s.text||"")){rp++;return}
+if(s.replying_to&&!withReplies)return;
+var a=s.author||{};
+if(a.screen_name&&a.screen_name.toLowerCase()!==exp){rp++;return}
+if(!av&&a.avatar_url){av=a.avatar_url;nm=a.name}
+var t=cleanText(s.text);if(t.length<4)return;
+out.push({id:s.id,url:s.url,text:t,likes:+s.likes||0,rt:+s.reposts||0,views:s.views,ts:s.created_timestamp})});
+return{tweets:out,avatar:av,name:nm,skipped:rp,cursor:(j&&j.cursor&&j.cursor.bottom)||null,raw:res.length}}
+function setMsg(t,err){$("msg").textContent=t;$("msg").className=err?"err":""}
+var TARGET=150,API="https://api.fxtwitter.com/2/profile/";
+async function crawl(handle,withReplies,all,seen,st){
+var cursor=null,pages=0,dry=0;
+while(pages<20&&all.length<TARGET){
+var url=API+encodeURIComponent(handle)+"/statuses?"+(withReplies?"with_replies=1&":"")+"count=100"+(cursor?"&cursor="+encodeURIComponent(cursor):"");
+var r=await fetch(url);
+if(r.status===400){r=await fetch(url.replace("count=100&","").replace("count=100",""))}
+if(r.status===404){if(!st.ok)throw new Error("notfound");break}
+if(!r.ok){if(!st.ok)throw new Error("fail");break}
+st.ok=true;
+var j=await r.json(),m=mapResults(j,handle,withReplies),before=all.length;
+m.tweets.forEach(function(t){if(!seen[t.id]){seen[t.id]=1;all.push(t)}});
+st.rp+=m.skipped;st.pages++;pages++;
+if(!st.av)st.av=m.avatar||findKey(j,"avatar_url");
+if(!st.nm)st.nm=m.name;
+dry=(all.length===before&&!m.tweets.length)?dry+1:0;
+setMsg("Reading your posts... "+all.length+" so far (page "+st.pages+")");
+if(!m.cursor||!m.raw||dry>=6)break;
+cursor=m.cursor}}
+async function loadProfile(handle){
+var all=[],seen={},st={ok:false,av:null,nm:null,replies:false,rp:0,pages:0};
+await crawl(handle,false,all,seen,st);
+if(all.length<100){st.replies=true;setMsg("Only "+all.length+" original posts so far. Adding your replies to get a fuller picture...");try{await crawl(handle,true,all,seen,st)}catch(e){}}
+if(!st.av){try{var r=await fetch(API+encodeURIComponent(handle));if(r.ok)st.av=findKey(await r.json(),"avatar_url")}catch(e){}}
+var prot=false,total=null;
+if(all.length<5){try{var r2=await fetch(API+encodeURIComponent(handle));if(r2.ok){var pj=await r2.json();prot=findVal(pj,"protected")===true;var tt=findVal(pj,"statuses");total=typeof tt==="number"?tt:null}}catch(e){}}
+return{tweets:all,avatar:st.av,name:st.nm,replies:st.replies,pages:st.pages,reposts:st.rp,prot:prot,total:total}}
+function loadImg(src){return new Promise(function(res){if(!src)return res(null);var i=new Image();i.crossOrigin="anonymous";i.onload=function(){res(i)};i.onerror=function(){res(null)};i.src=src})}
+var FF='"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif';
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function wrapT(c,t,x,y,mw,lh,max){var w=t.split(" "),l="",n=0;
+for(var i=0;i<w.length;i++){var tt=l+w[i]+" ";if(c.measureText(tt).width>mw&&l){if(n>=max-1){c.fillText(l.trim()+"...",x,y);return}c.fillText(l.trim(),x,y);y+=lh;n++;l=w[i]+" "}else l=tt}
+c.fillText(l.trim(),x,y)}
+async function drawCard(a,handle,avatarUrl){
+var cv=$("card"),c=cv.getContext("2d"),W=1200,H=675,p=a.poke;
+try{if(document.fonts&&document.fonts.load){await document.fonts.load("800 40px 'Bricolage Grotesque'")}}catch(e){}
+var imgs=await Promise.all([loadImg(avatarUrl?avatarUrl.replace("_normal","_400x400"):null),loadImg(ART+p.dex+".png")]);
+var pic=imgs[0],art=imgs[1];
+c.clearRect(0,0,W,H);
+var g=c.createLinearGradient(0,0,W,H);g.addColorStop(0,"#1B1340");g.addColorStop(1,p.c);c.fillStyle=g;c.fillRect(0,0,W,H);
+c.fillStyle="rgba(20,15,46,.8)";rr(c,36,36,W-72,H-112,34);c.fill();
+c.textBaseline="alphabetic";
+c.save();c.beginPath();c.arc(190,230,100,0,7);c.closePath();c.clip();
+if(pic){var sz=Math.min(pic.width,pic.height);c.drawImage(pic,(pic.width-sz)/2,(pic.height-sz)/2,sz,sz,90,130,200,200)}
+else{c.fillStyle="#FFD23F";c.fillRect(90,130,200,200);c.fillStyle="#1B1340";c.font="800 110px "+FF;c.textAlign="center";c.textBaseline="middle";c.fillText(handle.charAt(0).toUpperCase(),190,236);c.textBaseline="alphabetic"}
+c.restore();c.lineWidth=7;c.strokeStyle="#fff";c.beginPath();c.arc(190,230,100,0,7);c.stroke();
+c.fillStyle="#fff";c.textAlign="center";c.font="700 30px "+FF;c.fillText("@"+handle,190,368);
+c.font="800 54px "+FF;c.fillStyle="#FFD23F";c.fillText("=",350,248);
+c.fillStyle=p.c;c.beginPath();c.arc(510,230,100,0,7);c.fill();
+if(art){c.save();c.beginPath();c.arc(510,230,100,0,7);c.clip();c.drawImage(art,400,120,220,220);c.restore()}
+else{c.font="110px "+FF;c.fillStyle="#000";c.textBaseline="middle";c.fillText(p.e,510,238);c.textBaseline="alphabetic"}
+c.lineWidth=7;c.strokeStyle="#fff";c.beginPath();c.arc(510,230,100,0,7);c.stroke();
+c.textAlign="left";c.fillStyle="#fff";c.font="800 66px "+FF;c.fillText(p.n,650,226);
+c.font="600 30px "+FF;c.fillStyle=p.c;c.fillText(p.t.join(" / "),650,274);
+c.font="400 24px "+FF;c.fillStyle="#d9d2f5";wrapT(c,p.d,650,316,480,32,2);
+var ks=Object.keys(NAMES).sort(function(x,y){return a.pct[y]-a.pct[x]}).slice(0,3);
+ks.forEach(function(k,i){var x=90+i*350;c.textAlign="left";c.fillStyle="#fff";c.font="600 26px "+FF;c.fillText(NAMES[k]+" "+a.pct[k],x,430);
+c.fillStyle="rgba(255,255,255,.18)";rr(c,x,444,300,16,8);c.fill();c.fillStyle=COL[k];rr(c,x,444,Math.max(16,300*a.pct[k]/100),16,8);c.fill()});
+c.fillStyle="#FFD23F";c.font="700 24px "+FF;c.fillText("My most scandalous tweet",90,510);
+c.fillStyle="#fff";c.font="400 28px "+FF;var q=a.sc.x.text;if(q.length>110)q=q.slice(0,107)+"...";wrapT(c,"\u201C"+q+"\u201D",90,548,1020,36,2);
+c.font="800 34px "+FF;c.fillStyle="#fff";c.textAlign="left";c.fillText("What's your Pok\u00e9mon?",60,H-34);
+c.textAlign="right";c.fillStyle="#FFD23F";c.fillText("@espressomart1n",W-60,H-34)}
+function safeUrl(u){return /^https:\/\/(x|twitter)\.com\//.test(u||"")?u:null}
+function quote(el,whyEl,x,why){el.textContent="";el.appendChild(document.createTextNode(x.text));
+whyEl.textContent="Why: "+why;var u=safeUrl(x.url);
+if(u){whyEl.appendChild(document.createTextNode(" "));var l=document.createElement("a");l.href=u;l.target="_blank";l.rel="noopener";l.textContent="Open tweet";whyEl.appendChild(l)}}
+var shareText="",intentUrl="",cardBlob=null;
+function showResult(a,handle,n){
+var p=a.poke;
+$("bars").innerHTML="";
+Object.keys(NAMES).forEach(function(k){var r=document.createElement("div");r.className="bar";
+r.innerHTML='<span></span><div class="track"><div class="fill"></div></div><b></b>';
+r.children[0].textContent=NAMES[k];r.children[2].textContent=a.pct[k];
+var f=r.querySelector(".fill");f.style.background=COL[k];f.style.width=a.pct[k]+"%";$("bars").appendChild(r)});
+quote($("sc"),$("scwhy"),a.sc.x,a.sc.r.why);
+quote($("vi"),$("viwhy"),a.vi.x,a.vi.r.why);
+var likes=0;a.list.forEach(function(x){likes+=x.likes});
+var st=[["Posts read",n],["Avg words",a.words],["Avg likes",Math.round(likes/n)],["Emojis",a.emo],["Hashtags",a.tags],["Questions",a.q+"%"]];
+$("stats").innerHTML="";st.forEach(function(s){var d=document.createElement("div");d.className="stat";d.innerHTML="<b></b><span></span>";d.children[0].textContent=s[1];d.children[1].textContent=s[0];$("stats").appendChild(d)});
+shareText="I'm "+p.n+" "+p.e+"! What's your Pok\u00e9mon?\nBuilt by @espressomart1n\n"+location.href;
+intentUrl="https://x.com/intent/tweet?text="+encodeURIComponent(shareText);$("card").toBlob(function(b){cardBlob=b},"image/png");
+$("out").style.display="block"}
+$("f").onsubmit=async function(ev){
+ev.preventDefault();
+var h=($("u").value||"").trim().replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i,"").replace(/^@/,"").split(/[/?#\s]/)[0];
+if(!/^[A-Za-z0-9_]{1,15}$/.test(h)){setMsg("Enter a valid X username, like @espressomart1n.",true);return}
+$("go").disabled=true;$("out").style.display="none";setMsg("Reading your posts...");
+try{
+var d=await loadProfile(h);
+if(d.tweets.length<5){setMsg(d.prot?"@"+h+" is a protected account, so X does not let anyone read its posts. Make the account public to use this.":"Found only "+d.tweets.length+" readable public posts for @"+h+(d.total!=null?" (the profile shows "+d.total+" posts in total)":"")+". The account may be new, mostly reposts, or X may not be sharing its timeline.",true);return}
+var a=analyze(d.tweets,h.toLowerCase());a.list=d.tweets;
+setMsg("Drawing your card...");
+await drawCard(a,h,d.avatar);
+showResult(a,h,d.tweets.length);
+var nn=d.tweets.length;setMsg("Read "+nn+" public posts from "+d.pages+" page"+(d.pages===1?"":"s")+(d.replies?", including replies":"")+(d.reposts?"; skipped "+d.reposts+" reposts":"")+". "+(nn<100?"X only exposed "+nn+" public posts for this account, so the result is based on a smaller sample.":"Save the image and post it on X."))}
+catch(e){
+setMsg(e&&e.message==="notfound"?"Could not find @"+h+". Check the spelling.":"Could not reach the X reader right now. It may be busy. Try again in a minute.",true)}
+finally{$("go").disabled=false}};
+$("post").onclick=function(){
+var blob=cardBlob;
+if(!blob){window.open(intentUrl,"_blank","noopener");setMsg("Opened X. Tap Save image, then attach it to your post.");return}
+var file=null;try{file=new File([blob],"whats-your-pokemon.png",{type:"image/png"})}catch(e){}
+var touch=window.matchMedia&&window.matchMedia("(pointer:coarse)").matches;
+if(touch&&file&&navigator.canShare&&navigator.canShare({files:[file]})){
+navigator.share({files:[file],text:shareText}).then(function(){setMsg("Choose X in the share sheet. Your card is attached.")},function(e){if(!e||e.name!=="AbortError"){window.open(intentUrl,"_blank","noopener");setMsg("Sharing the image was blocked. Tap Save image, then attach it to your post.",true)}});return}
+var cp=null;try{cp=navigator.clipboard.write([new ClipboardItem({"image/png":blob})])}catch(e){}
+window.open(intentUrl,"_blank","noopener");
+if(cp){cp.then(function(){setMsg("Your card is copied. In the X window, press Ctrl+V (Cmd+V on a Mac) to attach it.")},function(){setMsg("Could not copy the image. Tap Save image, then attach it to your post.",true)})}
+else{setMsg("Opened X. Tap Save image, then attach it to your post.",true)}};
+$("save").onclick=function(){$("card").toBlob(function(b){if(!b){setMsg("Could not save the image. Press and hold the card to save it.",true);return}
+var l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="whats-your-pokemon.png";document.body.appendChild(l);l.click();l.remove()},"image/png")};
+$("copy").onclick=function(){try{navigator.clipboard.writeText(shareText).then(function(){setMsg("Copied.")},function(){setMsg("Copy blocked by the browser.",true)})}catch(e){setMsg("Copy blocked by the browser.",true)}};
+window.__test={showResult:showResult,mapResults:mapResults,analyze:analyze,loadProfile:loadProfile,POKE:POKE,LEX:LEX,TC:TC,NAMES:NAMES};
+})();
+</script>
+</body>
+</html>
